@@ -9,6 +9,7 @@ WORKDIR /app
 
 COPY metar ./metar
 COPY README.md ./
+COPY logo.png ./
 
 EXPOSE 8000
 
