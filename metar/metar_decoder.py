@@ -87,6 +87,10 @@ def knots_to_mps(knots: int) -> float:
     return knots * 0.514444
 
 
+def mps_to_knots(mps: int) -> float:
+    return mps / 0.514444
+
+
 def inhg_to_hpa(inhg: float) -> int:
     return round(inhg * 33.8639)
 
@@ -112,6 +116,33 @@ def direction_to_compass(degrees: int) -> str:
     if normalized == 360 and degrees != 360:
         normalized = 0
     return DIRECTION_MAP.get(normalized, "")
+
+
+def format_direction(degrees: int) -> str:
+    compass = direction_to_compass(degrees)
+    if compass:
+        return f"{degrees}° ({compass})"
+    return f"{degrees}°"
+
+
+def describe_variable_wind_range(token: str) -> str:
+    m = re.fullmatch(r"(\d{3})V(\d{3})", token)
+    if not m:
+        return ""
+    start, end = (int(value) for value in m.groups())
+    return f"Wind direction is varying between {format_direction(start)} and {format_direction(end)}."
+
+
+def describe_cavok(token: str) -> str:
+    if token != "CAVOK":
+        return ""
+    return "Ceiling and visibility OK: visibility is 10 km or more, no cloud below 5,000 feet or below the highest minimum sector altitude, and no significant weather."
+
+
+def describe_trend(token: str) -> str:
+    if token == "NOSIG":
+        return "No significant change is expected in the trend period."
+    return ""
 
 
 def decode_temperature(token: str) -> str:
@@ -157,22 +188,35 @@ def decode_visibility(token: str) -> str:
 
 
 def decode_wind(token: str) -> str:
-    m = re.fullmatch(r"(VRB|\d{3})(\d{2,3})(G(\d{2,3}))?KT", token)
+    m = re.fullmatch(r"(VRB|\d{3})(\d{2,3})(G(\d{2,3}))?(KT|MPS)", token)
     if not m:
         return ""
 
-    direction, speed, _, gust = m.groups()
+    direction, speed, _, gust, unit = m.groups()
     speed_value = int(speed)
+    speed_knots = round(mps_to_knots(speed_value)) if unit == "MPS" else speed_value
 
     if direction == "VRB":
-        message = f"Wind variable at {speed_value} knots"
+        if unit == "MPS":
+            message = f"Wind variable at {speed_value} meters per second"
+        else:
+            message = f"Wind variable at {speed_value} knots"
     elif direction == "000" and speed_value == 0:
         message = "Calm wind"
     else:
-        message = f"Wind from {direction}° at {speed_value} knots"
+        if unit == "MPS":
+            message = f"Wind from {direction}° at {speed_value} meters per second"
+        else:
+            message = f"Wind from {direction}° at {speed_value} knots"
 
     if gust:
-        message += f", gusting to {int(gust)} knots"
+        if unit == "MPS":
+            message += f", gusting to {int(gust)} meters per second"
+        else:
+            message += f", gusting to {int(gust)} knots"
+
+    if unit == "MPS":
+        message += f" ({speed_knots} knots)"
 
     return message + "."
 
@@ -285,29 +329,40 @@ def describe_visibility(token: str) -> str:
 
 
 def describe_wind(token: str) -> str:
-    m = re.fullmatch(r"(VRB|\d{3})(\d{2,3})(G(\d{2,3}))?KT", token)
+    m = re.fullmatch(r"(VRB|\d{3})(\d{2,3})(G(\d{2,3}))?(KT|MPS)", token)
     if not m:
         return ""
 
-    direction, speed, _, gust = m.groups()
+    direction, speed, _, gust, unit = m.groups()
     speed_value = int(speed)
-    speed_mps = round(knots_to_mps(speed_value), 1)
+    if unit == "MPS":
+        speed_mps = float(speed_value)
+        speed_knots = round(mps_to_knots(speed_value))
+    else:
+        speed_knots = speed_value
+        speed_mps = round(knots_to_mps(speed_value), 1)
 
     if direction == "VRB":
-        message = f"Winds variable at {speed_value} knots ({speed_mps} m/s)"
+        if unit == "MPS":
+            message = f"Winds variable at {speed_value} m/s ({speed_knots} knots)"
+        else:
+            message = f"Winds variable at {speed_value} knots ({speed_mps} m/s)"
     elif direction == "000" and speed_value == 0:
         message = "Calm wind"
     else:
         degrees = int(direction)
-        compass = direction_to_compass(degrees)
-        if compass:
-            message = f"Winds from {degrees}° ({compass}) at {speed_value} knots ({speed_mps} m/s)"
+        direction_text = format_direction(degrees)
+        if unit == "MPS":
+            message = f"Winds from {direction_text} at {speed_value} m/s ({speed_knots} knots)"
         else:
-            message = f"Winds from {degrees}° at {speed_value} knots ({speed_mps} m/s)"
+            message = f"Winds from {direction_text} at {speed_value} knots ({speed_mps} m/s)"
 
     if gust:
         gust_value = int(gust)
-        message += f", gusting to {gust_value} knots ({round(knots_to_mps(gust_value), 1)} m/s)"
+        if unit == "MPS":
+            message += f", gusting to {gust_value} m/s ({round(mps_to_knots(gust_value))} knots)"
+        else:
+            message += f", gusting to {gust_value} knots ({round(knots_to_mps(gust_value), 1)} m/s)"
 
     return message + "."
 
@@ -548,6 +603,9 @@ def decode_metar(metar: str) -> str:
 
         for decoder in (
             decode_wind,
+            describe_variable_wind_range,
+            describe_cavok,
+            describe_trend,
             decode_visibility,
             decode_weather,
             decode_cloud,
@@ -680,11 +738,14 @@ def parse_metar_sections(metar: str) -> List[Dict[str, str]]:
         matched = False
         for title, decoder in (
             ("Wind", describe_wind),
+            ("Wind Variation", describe_variable_wind_range),
+            ("Ceiling And Visibility", describe_cavok),
             ("Prevailing Visibility", describe_visibility),
             ("Weather", decode_weather),
             ("Clouds", describe_cloud),
             ("Temperature", describe_temperature),
             ("Pressure", describe_altimeter),
+            ("Trend", describe_trend),
         ):
             text = decoder(token)
             if text:

@@ -148,6 +148,39 @@ def cached_metar_data(icao: str) -> dict:
     return result
 
 
+def enrich_sections_with_station_info(
+    sections: list[dict[str, str]],
+    station_info: dict | None,
+) -> list[dict[str, str]]:
+    if not station_info:
+        return sections
+
+    enriched_sections: list[dict[str, str]] = []
+    station_name = str(station_info.get("name") or "").strip()
+    city = str(station_info.get("city") or "").strip()
+    country = str(station_info.get("country") or "").strip()
+    location_parts = [value for value in (city, country) if value]
+
+    for section in sections:
+        if section.get("title") != "Identifier":
+            enriched_sections.append(section)
+            continue
+
+        updated_section = dict(section)
+        if station_name:
+            description = station_name
+            if location_parts:
+                description += ". " + ", ".join(location_parts) + "."
+            else:
+                description += "."
+            updated_section["description"] = description
+        elif location_parts:
+            updated_section["description"] = f"Reporting station in {', '.join(location_parts)}."
+        enriched_sections.append(updated_section)
+
+    return enriched_sections
+
+
 def render_blocks_html(sections: list[dict[str, str]]) -> str:
     blocks = []
     for section in sections:
@@ -261,7 +294,8 @@ def render_page(
     station_search_value = escape(station_search)
     search_selected_icao_value = escape(search_selected_icao)
     search_selected_label_value = escape(search_selected_label)
-    block_html = render_blocks_html(sections or [])
+    display_sections = enrich_sections_with_station_info(sections or [], station_info)
+    block_html = render_blocks_html(display_sections)
     lookup_html = format_station_lookup_html(station_info)
     error_html = f'<div class="error-banner">{escape(error_message)}</div>' if error_message else ""
     fetch_html = f'<div class="fetch-meta">{escape(fetch_meta)}</div>' if fetch_meta else ""
@@ -402,7 +436,7 @@ class MetarHandler(BaseHTTPRequestHandler):
             return
         if text:
             try:
-                results = cached_search_station_data(text)[:8]
+                results = cached_search_station_data(text)[:5]
             except AvwxError as exc:
                 error = public_error_message(exc)
         payload = json.dumps({"results": results, "error": error}).encode("utf-8")

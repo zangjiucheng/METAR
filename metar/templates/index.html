@@ -186,7 +186,7 @@
       border-radius: 16px;
       background: white;
       overflow: hidden;
-      max-height: 240px;
+      max-height: 196px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
@@ -200,7 +200,7 @@
       background: white;
       color: var(--text);
       text-align: left;
-      padding: 14px 16px;
+      padding: 11px 14px;
       cursor: pointer;
       font: inherit;
     }
@@ -212,12 +212,19 @@
     }
     .search-option-name {
       font-weight: 700;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .search-option-meta {
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       color: var(--muted);
-      line-height: 1.35;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .selected-station {
       border-radius: 16px;
@@ -520,7 +527,7 @@
         padding-top: 8px;
       }
       .search-dropdown {
-        max-height: 220px;
+        max-height: 180px;
       }
       .search-option {
         padding: 12px 14px;
@@ -708,13 +715,16 @@
         return;
       }
       searchDropdown.innerHTML = results.map((item) => {
-        const label = `${item.name} (${item.icao}${item.iata ? ' / ' + item.iata : ''})`;
-        const meta = `${item.city || 'Unknown'}, ${item.country || 'Unknown'}`;
+        const airportName = item.name || 'Unknown';
+        const stationCode = item.icao || item.station || 'Unknown';
+        const city = item.city || 'Unknown';
+        const country = item.country || 'Unknown';
+        const label = `${stationCode} · ${airportName}`;
         return `
           <button type="button" class="search-option" data-icao="${item.icao || item.station || ''}" data-label="${label}">
-            <div class="search-option-name">${item.name || 'Unknown'}</div>
-            <div class="search-option-meta">ICAO ${item.icao || item.station || 'Unknown'} | IATA ${item.iata || 'N/A'}</div>
-            <div class="search-option-meta">${meta}</div>
+            <div class="search-option-name">${stationCode} ${item.iata ? '· ' + item.iata : ''}</div>
+            <div class="search-option-meta">${airportName}</div>
+            <div class="search-option-meta">${city}, ${country}</div>
           </button>
         `;
       }).join('');
