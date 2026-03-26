@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>METAR</title>
+  <link rel="icon" type="image/png" href="/logo.png">
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #4f8ae8;
+      --page-2: #78aff7;
+      --shell: rgba(255, 255, 255, 0.18);
+      --surface: #fbfdff;
+      --surface-2: #eef4fb;
+      --surface-3: #f7faff;
+      --text: #1a2232;
+      --muted: #697386;
+      --line: #dfe8f5;
+      --accent: #2a66c8;
+      --shadow: rgba(18, 37, 70, 0.18);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 24%),
+        linear-gradient(180deg, var(--page) 0%, var(--page-2) 100%);
+      padding: 18px;
+      overflow-x: hidden;
+    }
+    main {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+    }
+    .shell {
+      background: var(--shell);
+      border-radius: 28px;
+      padding: 14px;
+      box-shadow: 0 26px 50px var(--shadow);
+    }
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.45fr);
+      gap: 14px;
+      align-items: stretch;
+      margin-bottom: 14px;
+    }
+    .hero,
+    .composer {
+      background: var(--surface);
+      border-radius: 22px;
+      padding: 22px 24px;
+      min-height: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+    }
+    .eyebrow {
+      margin: 0 0 8px;
+      font-size: 0.82rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.9rem, 3.6vw, 3rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      font-weight: 600;
+    }
+    .intro {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 1rem;
+    }
+    form {
+      display: grid;
+      gap: 12px;
+      height: 100%;
+    }
+    .composer-grid {
+      display: grid;
+      gap: 14px;
+    }
+    .tab-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .tab-button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--surface-3);
+      color: var(--muted);
+      border-radius: 16px;
+      padding: 14px 16px;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      min-width: 0;
+    }
+    .tab-button strong {
+      display: block;
+      font-size: 0.98rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .tab-button span {
+      display: block;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+    .tab-button.is-active {
+      background: linear-gradient(135deg, rgba(36, 95, 191, 0.12), rgba(93, 151, 236, 0.16));
+      border-color: rgba(42, 102, 200, 0.28);
+      box-shadow: inset 0 0 0 1px rgba(42, 102, 200, 0.12);
+    }
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+    .field-card {
+      background: var(--surface-3);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+    }
+    .field-label {
+      font-size: 0.83rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .field-note {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 0.94rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 156px;
+      resize: vertical;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      padding: 16px 18px;
+      font: inherit;
+      font-size: 1.02rem;
+      color: var(--text);
+      background: var(--surface-3);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    input {
+      width: 100%;
+      height: 52px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      padding: 0 16px;
+      font: inherit;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--surface-3);
+    }
+    .fetch-card {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .panel {
+      display: none;
+    }
+    .panel.is-active {
+      display: grid;
+      gap: 12px;
+    }
+    .search-dropdown {
+      display: none;
+      margin-top: 2px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: white;
+      overflow: hidden;
+      max-height: 240px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .search-dropdown.is-open {
+      display: block;
+    }
+    .search-option {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: white;
+      color: var(--text);
+      text-align: left;
+      padding: 14px 16px;
+      cursor: pointer;
+      font: inherit;
+    }
+    .search-option:last-child {
+      border-bottom: 0;
+    }
+    .search-option:hover {
+      background: var(--surface-3);
+    }
+    .search-option-name {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .search-option-meta {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .selected-station {
+      border-radius: 16px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 18px;
+      padding: 15px 18px;
+      font: inherit;
+      font-weight: 700;
+      color: white;
+      background: linear-gradient(135deg, #245fbf, #5d97ec);
+      cursor: pointer;
+      min-width: 170px;
+    }
+    .error-banner,
+    .fetch-meta {
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    .error-banner {
+      background: #fff1f2;
+      color: #9f1239;
+      border: 1px solid #fecdd3;
+    }
+    .fetch-meta {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .report {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .raw-bar {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(21, 37, 64, 0.94), rgba(32, 57, 94, 0.92));
+      color: white;
+      border-radius: 22px;
+      padding: 18px 20px;
+      box-shadow: 0 14px 28px rgba(21, 37, 64, 0.18);
+    }
+    .raw-bar-label {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.72);
+      font-weight: 700;
+    }
+    .raw-bar-value {
+      font-size: 1rem;
+      line-height: 1.5;
+      letter-spacing: 0.02em;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
+    }
+    .lookup-card {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      min-height: 0;
+      padding: 22px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.52);
+      box-shadow: 0 10px 24px rgba(35, 60, 105, 0.06);
+    }
+    .lookup-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .lookup-item {
+      background: var(--surface-3);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .lookup-label {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .lookup-value {
+      font-size: 1rem;
+      color: var(--text);
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .data-block {
+      background: var(--surface);
+      min-height: 168px;
+      padding: 22px 22px 20px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.52);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      box-shadow: 0 10px 24px rgba(35, 60, 105, 0.06);
+    }
+    .data-block-full {
+      grid-column: 1 / -1;
+      min-height: 0;
+    }
+    .block-title {
+      margin-bottom: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #7e8796;
+    }
+    .block-token {
+      font-size: clamp(1.4rem, 2.4vw, 2.1rem);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
+    }
+    .block-description {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.38;
+      max-width: none;
+    }
+    .remark-list {
+      list-style: none;
+      margin: 18px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .remark-item {
+      display: grid;
+      grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+    }
+    .remark-token {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      overflow-wrap: anywhere;
+    }
+    .remark-text {
+      font-size: 0.97rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .empty-state {
+      grid-column: 1 / -1;
+      min-height: 240px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 40px 28px;
+      color: var(--muted);
+      font-size: 1.15rem;
+      background: var(--surface);
+      border-radius: 22px;
+    }
+    @media (max-width: 1100px) {
+      .report {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 920px) {
+      body {
+        padding: 12px;
+      }
+      .shell {
+        border-radius: 24px;
+        padding: 10px;
+      }
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+      .hero,
+      .composer {
+        padding: 18px;
+      }
+      .tab-list {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(220px, 78%);
+        grid-template-columns: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+      .tab-button {
+        scroll-snap-align: start;
+      }
+      .tab-button {
+        padding: 12px 14px;
+      }
+      .report {
+        grid-template-columns: 1fr;
+      }
+      .lookup-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 780px) {
+      body {
+        padding: 10px;
+      }
+      .hero,
+      .composer {
+        padding: 16px;
+      }
+      .tab-list {
+        grid-auto-columns: 85%;
+        gap: 8px;
+      }
+      h1 {
+        font-size: clamp(1.65rem, 8vw, 2.2rem);
+        line-height: 0.98;
+      }
+      .intro {
+        font-size: 0.95rem;
+      }
+      .eyebrow {
+        font-size: 0.76rem;
+        letter-spacing: 0.12em;
+      }
+      textarea {
+        min-height: 136px;
+        padding: 14px 15px;
+        font-size: 0.98rem;
+      }
+      input {
+        height: 48px;
+        padding: 0 14px;
+        font-size: 0.98rem;
+      }
+      button {
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 16px;
+      }
+      .field-card {
+        padding: 14px;
+      }
+      .lookup-grid {
+        grid-template-columns: 1fr;
+      }
+      .lookup-card,
+      .data-block,
+      .raw-bar {
+        border-radius: 18px;
+      }
+      .lookup-card,
+      .data-block {
+        padding: 18px 16px 16px;
+      }
+      .raw-bar {
+        padding: 16px;
+      }
+      .raw-bar-value {
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+      .block-title {
+        margin-bottom: 14px;
+        font-size: 0.8rem;
+      }
+      .block-token {
+        font-size: clamp(1.2rem, 6vw, 1.65rem);
+      }
+      .block-description,
+      .remark-text,
+      .lookup-value {
+        font-size: 0.95rem;
+      }
+      .remark-item {
+        grid-template-columns: 1fr;
+        gap: 6px;
+        padding-top: 8px;
+      }
+      .search-dropdown {
+        max-height: 220px;
+      }
+      .search-option {
+        padding: 12px 14px;
+      }
+      .selected-station,
+      .error-banner,
+      .fetch-meta {
+        padding: 12px 14px;
+        font-size: 0.92rem;
+      }
+      .empty-state {
+        min-height: 180px;
+        padding: 24px 18px;
+        font-size: 1rem;
+      }
+    }
+    @media (max-width: 480px) {
+      body {
+        padding: 8px;
+      }
+      .shell {
+        padding: 8px;
+        border-radius: 20px;
+      }
+      .hero,
+      .composer {
+        padding: 14px;
+        border-radius: 18px;
+      }
+      .tab-list {
+        grid-auto-columns: 88%;
+      }
+      .tab-button strong {
+        font-size: 0.92rem;
+      }
+      .tab-button span {
+        font-size: 0.84rem;
+      }
+      .field-label,
+      .lookup-label,
+      .raw-bar-label {
+        font-size: 0.74rem;
+      }
+      textarea {
+        min-height: 120px;
+      }
+      .lookup-card,
+      .data-block {
+        padding: 16px 14px 14px;
+      }
+      .raw-bar {
+        padding: 14px;
+      }
+      .remark-list {
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="shell">
+      <section class="topbar">
+        <div class="hero">
+          <p class="eyebrow">Aviation Weather</p>
+          <h1>METAR</h1>
+          <p class="intro">A compact one-page layout with each decoded part shown as its own card.</p>
+        </div>
+        <section class="composer">
+          <form method="post" id="metar-form">
+            <input type="hidden" name="active_tab" id="active-tab" value="__ACTIVE_TAB_VALUE__">
+            <div class="composer-grid">
+              <div class="tab-list">
+                <button type="button" class="tab-button" data-tab="manual">
+                  <strong>Manual METAR</strong>
+                  <span>Paste a raw METAR string and decode it directly.</span>
+                </button>
+                <button type="button" class="tab-button" data-tab="live">
+                  <strong>Live by ICAO</strong>
+                  <span>Fetch current METAR and station data from a known ICAO code.</span>
+                </button>
+                <button type="button" class="tab-button" data-tab="search">
+                  <strong>Search Airport</strong>
+                  <span>Type an airport or city name, choose from the dropdown, then fetch live data.</span>
+                </button>
+              </div>
+              <div class="field-card">
+                <section class="panel" data-panel="manual">
+                  <div class="field">
+                    <div class="field-label">METAR Input</div>
+                    <textarea name="metar" placeholder="Here to input METAR...">__METAR_VALUE__</textarea>
+                  </div>
+                  <button type="submit">Decode Typed METAR</button>
+                </section>
+                <section class="panel" data-panel="live">
+                  <div class="fetch-card">
+                    <div class="field">
+                      <div class="field-label">ICAO Code</div>
+                      <input name="icao" placeholder="KMCO" value="__ICAO_VALUE__">
+                    </div>
+                    <p class="field-note">Uses the token from your local <code>.env</code> or environment variables automatically. Refreshes every __AUTO_REFRESH_SECONDS__ seconds while active.</p>
+                    <button type="submit">Fetch Live METAR</button>
+                  </div>
+                </section>
+                <section class="panel" data-panel="search">
+                  <div class="fetch-card">
+                    <div class="field">
+                      <div class="field-label">Airport or City</div>
+                      <input id="station-search-input" name="station_search" placeholder="Orlando" value="__STATION_SEARCH_VALUE__" autocomplete="off">
+                      <input type="hidden" id="selected-icao" name="search_selected_icao" value="__SEARCH_SELECTED_ICAO_VALUE__">
+                      <input type="hidden" id="selected-label" name="search_selected_label" value="__SEARCH_SELECTED_LABEL_VALUE__">
+                      <div id="search-dropdown" class="search-dropdown"></div>
+                    </div>
+                    <div id="selected-station" class="selected-station"__SELECTED_STATION_STYLE__>Selected: __SEARCH_SELECTED_LABEL_VALUE__</div>
+                    <p class="field-note">Search updates live as you type. After you pick a station, live data refreshes every __AUTO_REFRESH_SECONDS__ seconds.</p>
+                    <button type="submit">Fetch Selected Airport</button>
+                  </div>
+                </section>
+                __ERROR_HTML__
+                __FETCH_HTML__
+              </div>
+            </div>
+          </form>
+        </section>
+      </section>
+      <section class="report">
+        __RAW_METAR_BAR__
+        __LOOKUP_HTML__
+        __BLOCK_HTML__
+      </section>
+    </div>
+  </main>
+  <form method="post" id="auto-refresh-form" style="display:none">
+    <input type="hidden" name="active_tab" value="__ACTIVE_TAB_VALUE__">
+    <input type="hidden" name="icao" value="__REFRESH_ICAO_VALUE__">
+    <input type="hidden" name="search_selected_icao" value="__REFRESH_ICAO_VALUE__">
+  </form>
+  <script>
+    const activeTabInput = document.getElementById('active-tab');
+    const tabButtons = Array.from(document.querySelectorAll('.tab-button'));
+    const panels = Array.from(document.querySelectorAll('.panel'));
+    const currentTab = activeTabInput.value || 'manual';
+
+    function activateTab(tab) {
+      activeTabInput.value = tab;
+      tabButtons.forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.tab === tab);
+        if (button.dataset.tab === tab) {
+          button.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      });
+      panels.forEach((panel) => {
+        panel.classList.toggle('is-active', panel.dataset.panel === tab);
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener('click', () => activateTab(button.dataset.tab));
+    });
+    activateTab(currentTab);
+
+    const searchInput = document.getElementById('station-search-input');
+    const selectedIcao = document.getElementById('selected-icao');
+    const selectedLabel = document.getElementById('selected-label');
+    const selectedStation = document.getElementById('selected-station');
+    const searchDropdown = document.getElementById('search-dropdown');
+    let searchTimer = null;
+
+    function setSelectedStation(label, icao) {
+      selectedLabel.value = label || '';
+      selectedIcao.value = icao || '';
+      if (label) {
+        selectedStation.textContent = 'Selected: ' + label;
+        selectedStation.style.display = 'block';
+      } else {
+        selectedStation.textContent = '';
+        selectedStation.style.display = 'none';
+      }
+    }
+
+    function renderSearchResults(results) {
+      if (!results.length) {
+        searchDropdown.innerHTML = '';
+        searchDropdown.classList.remove('is-open');
+        return;
+      }
+      searchDropdown.innerHTML = results.map((item) => {
+        const label = `${item.name} (${item.icao}${item.iata ? ' / ' + item.iata : ''})`;
+        const meta = `${item.city || 'Unknown'}, ${item.country || 'Unknown'}`;
+        return `
+          <button type="button" class="search-option" data-icao="${item.icao || item.station || ''}" data-label="${label}">
+            <div class="search-option-name">${item.name || 'Unknown'}</div>
+            <div class="search-option-meta">ICAO ${item.icao || item.station || 'Unknown'} | IATA ${item.iata || 'N/A'}</div>
+            <div class="search-option-meta">${meta}</div>
+          </button>
+        `;
+      }).join('');
+      searchDropdown.classList.add('is-open');
+      searchDropdown.querySelectorAll('.search-option').forEach((button) => {
+        button.addEventListener('click', () => {
+          searchInput.value = button.dataset.label;
+          setSelectedStation(button.dataset.label, button.dataset.icao);
+          searchDropdown.classList.remove('is-open');
+        });
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        setSelectedStation('', '');
+        const value = searchInput.value.trim();
+        window.clearTimeout(searchTimer);
+        if (value.length < 2) {
+          searchDropdown.innerHTML = '';
+          searchDropdown.classList.remove('is-open');
+          return;
+        }
+        searchTimer = window.setTimeout(async () => {
+          try {
+            const response = await fetch(`/api/search-station?text=${encodeURIComponent(value)}`);
+            const data = await response.json();
+            renderSearchResults(Array.isArray(data.results) ? data.results : []);
+          } catch (_error) {
+            searchDropdown.innerHTML = '';
+            searchDropdown.classList.remove('is-open');
+          }
+        }, 350);
+      });
+    }
+
+    if (selectedLabel.value && selectedIcao.value) {
+      setSelectedStation(selectedLabel.value, selectedIcao.value);
+    }
+
+    const refreshForm = document.getElementById('auto-refresh-form');
+    const refreshTab = activeTabInput.value;
+    const refreshIcao = refreshTab === 'live'
+      ? refreshForm.querySelector('input[name="icao"]').value
+      : refreshForm.querySelector('input[name="search_selected_icao"]').value;
+    if (refreshForm && refreshIcao && (refreshTab === 'live' || refreshTab === 'search')) {
+      window.setTimeout(() => refreshForm.submit(), __AUTO_REFRESH_MILLISECONDS__);
+    }
+  </script>
+</body>
+</html>
