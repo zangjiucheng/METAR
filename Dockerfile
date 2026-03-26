@@ -1,0 +1,15 @@
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV METAR_HOST=0.0.0.0
+ENV METAR_PORT=8000
+
+WORKDIR /app
+
+COPY metar ./metar
+COPY README.md ./
+
+EXPOSE 8000
+
+CMD ["python", "-m", "metar.web"]
