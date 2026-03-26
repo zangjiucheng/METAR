@@ -273,7 +273,31 @@ def decode_weather(token: str) -> str:
     if not parts:
         return ""
 
-    return (intensity + " ".join(parts)).capitalize() + "."
+    if parts == ["showers", "rain"]:
+        phrase = "rain showers"
+    elif parts == ["thunderstorm", "rain"]:
+        phrase = "thunderstorm with rain"
+    elif parts == ["freezing", "rain"]:
+        phrase = "freezing rain"
+    elif parts == ["blowing", "snow"]:
+        phrase = "blowing snow"
+    else:
+        phrase = " ".join(parts)
+
+    return (intensity + phrase).capitalize() + "."
+
+
+def describe_recent_weather(token: str) -> str:
+    if not token.startswith("RE") or len(token) <= 2:
+        return ""
+
+    body = token[2:]
+    weather_text = decode_weather(body)
+    if not weather_text:
+        return ""
+    if weather_text.endswith("."):
+        weather_text = weather_text[:-1]
+    return f"Recent weather: {weather_text.lower()}."
 
 
 def decode_time(token: str) -> str:
@@ -612,6 +636,7 @@ def decode_metar(metar: str) -> str:
             describe_variable_wind_range,
             describe_cavok,
             describe_trend,
+            describe_recent_weather,
             decode_visibility,
             decode_weather,
             decode_cloud,
@@ -747,6 +772,7 @@ def parse_metar_sections(metar: str) -> List[Dict[str, str]]:
             ("Wind Variation", describe_variable_wind_range),
             ("Ceiling And Visibility", describe_cavok),
             ("Prevailing Visibility", describe_visibility),
+            ("Recent Weather", describe_recent_weather),
             ("Weather", decode_weather),
             ("Clouds", describe_cloud),
             ("Temperature", describe_temperature),
