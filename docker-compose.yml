@@ -1,8 +1,6 @@
 services:
   metar:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${METAR_IMAGE:-ghcr.io/zangjiucheng/metar:latest}
     container_name: metar
     ports:
       - "8000:8000"
