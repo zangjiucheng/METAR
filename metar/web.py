@@ -5,6 +5,7 @@ import time
 from collections import deque
 from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .avwx_client import AvwxError, fetch_metar_data, fetch_station_data, search_station_data
@@ -13,6 +14,8 @@ from .metar_decoder import parse_metar_sections
 HOST = os.getenv("METAR_HOST", "0.0.0.0")
 PORT = int(os.getenv("METAR_PORT", "8000"))
 AUTO_REFRESH_SECONDS = 60
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+LOGO_PATH = PROJECT_ROOT / "logo.png"
 SEARCH_RATE_LIMIT = (30, 60)
 LIVE_RATE_LIMIT = (30, 300)
 MANUAL_RATE_LIMIT = (60, 60)
@@ -264,6 +267,7 @@ def render_page(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>METAR</title>
+  <link rel="icon" type="image/png" href="/logo.png">
   <style>
     :root {{
       color-scheme: light;
@@ -289,6 +293,7 @@ def render_page(
         radial-gradient(circle at top left, rgba(255, 255, 255, 0.18), transparent 24%),
         linear-gradient(180deg, var(--page) 0%, var(--page-2) 100%);
       padding: 18px;
+      overflow-x: hidden;
     }}
     main {{
       width: min(1280px, 100%);
@@ -360,6 +365,7 @@ def render_page(
       text-align: left;
       cursor: pointer;
       font: inherit;
+      min-width: 0;
     }}
     .tab-button strong {{
       display: block;
@@ -445,6 +451,7 @@ def render_page(
       overflow: hidden;
       max-height: 240px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }}
     .search-dropdown.is-open {{
       display: block;
@@ -540,6 +547,7 @@ def render_page(
       line-height: 1.5;
       letter-spacing: 0.02em;
       word-break: break-word;
+      overflow-wrap: anywhere;
       font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
     }}
     .lookup-card {{
@@ -657,8 +665,12 @@ def render_page(
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }}
     }}
-    @media (max-width: 780px) {{
+    @media (max-width: 920px) {{
       body {{
+        padding: 12px;
+      }}
+      .shell {{
+        border-radius: 24px;
         padding: 10px;
       }}
       .topbar {{
@@ -669,20 +681,164 @@ def render_page(
         padding: 18px;
       }}
       .tab-list {{
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(220px, 78%);
+        grid-template-columns: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
       }}
-      textarea {{
-        min-height: 136px;
+      .tab-button {{
+        scroll-snap-align: start;
+      }}
+      .tab-button {{
+        padding: 12px 14px;
       }}
       .report {{
         grid-template-columns: 1fr;
       }}
       .lookup-grid {{
+        grid-template-columns: 1fr 1fr;
+      }}
+    }}
+    @media (max-width: 780px) {{
+      body {{
+        padding: 10px;
+      }}
+      .hero,
+      .composer {{
+        padding: 16px;
+      }}
+      .tab-list {{
+        grid-auto-columns: 85%;
+        gap: 8px;
+      }}
+      h1 {{
+        font-size: clamp(1.65rem, 8vw, 2.2rem);
+        line-height: 0.98;
+      }}
+      .intro {{
+        font-size: 0.95rem;
+      }}
+      .eyebrow {{
+        font-size: 0.76rem;
+        letter-spacing: 0.12em;
+      }}
+      textarea {{
+        min-height: 136px;
+        padding: 14px 15px;
+        font-size: 0.98rem;
+      }}
+      input {{
+        height: 48px;
+        padding: 0 14px;
+        font-size: 0.98rem;
+      }}
+      button {{
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 16px;
+      }}
+      .field-card {{
+        padding: 14px;
+      }}
+      .lookup-grid {{
         grid-template-columns: 1fr;
+      }}
+      .lookup-card,
+      .data-block,
+      .raw-bar {{
+        border-radius: 18px;
+      }}
+      .lookup-card,
+      .data-block {{
+        padding: 18px 16px 16px;
+      }}
+      .raw-bar {{
+        padding: 16px;
+      }}
+      .raw-bar-value {{
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }}
+      .block-title {{
+        margin-bottom: 14px;
+        font-size: 0.8rem;
+      }}
+      .block-token {{
+        font-size: clamp(1.2rem, 6vw, 1.65rem);
+      }}
+      .block-description,
+      .remark-text,
+      .lookup-value {{
+        font-size: 0.95rem;
       }}
       .remark-item {{
         grid-template-columns: 1fr;
         gap: 6px;
+        padding-top: 8px;
+      }}
+      .search-dropdown {{
+        max-height: 220px;
+      }}
+      .search-option {{
+        padding: 12px 14px;
+      }}
+      .selected-station,
+      .error-banner,
+      .fetch-meta {{
+        padding: 12px 14px;
+        font-size: 0.92rem;
+      }}
+      .empty-state {{
+        min-height: 180px;
+        padding: 24px 18px;
+        font-size: 1rem;
+      }}
+    }}
+    @media (max-width: 480px) {{
+      body {{
+        padding: 8px;
+      }}
+      .shell {{
+        padding: 8px;
+        border-radius: 20px;
+      }}
+      .hero,
+      .composer {{
+        padding: 14px;
+        border-radius: 18px;
+      }}
+      .tab-list {{
+        grid-auto-columns: 88%;
+      }}
+      .tab-button strong {{
+        font-size: 0.92rem;
+      }}
+      .tab-button span {{
+        font-size: 0.84rem;
+      }}
+      .field-label,
+      .lookup-label,
+      .raw-bar-label {{
+        font-size: 0.74rem;
+      }}
+      textarea {{
+        min-height: 120px;
+      }}
+      .lookup-card,
+      .data-block {{
+        padding: 16px 14px 14px;
+      }}
+      .raw-bar {{
+        padding: 14px;
+      }}
+      .remark-list {{
+        gap: 8px;
       }}
     }}
   </style>
@@ -775,6 +931,9 @@ def render_page(
       activeTabInput.value = tab;
       tabButtons.forEach((button) => {{
         button.classList.toggle('is-active', button.dataset.tab === tab);
+        if (button.dataset.tab === tab) {{
+          button.scrollIntoView({{ behavior: 'smooth', block: 'nearest', inline: 'center' }});
+        }}
       }});
       panels.forEach((panel) => {{
         panel.classList.toggle('is-active', panel.dataset.panel === tab);
@@ -875,6 +1034,9 @@ def render_page(
 class MetarHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path == "/logo.png":
+            self._send_file(LOGO_PATH, "image/png")
+            return
         if parsed.path == "/api/search-station":
             self._handle_station_search_api(parsed)
             return
@@ -1009,6 +1171,18 @@ class MetarHandler(BaseHTTPRequestHandler):
         if extra_headers:
             for key, value in extra_headers.items():
                 self.send_header(key, value)
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def _send_file(self, path: Path, content_type: str) -> None:
+        if not path.exists():
+            self.send_error(404)
+            return
+        payload = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "public, max-age=86400")
         self.end_headers()
         self.wfile.write(payload)
 
