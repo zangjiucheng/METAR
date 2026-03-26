@@ -142,6 +142,10 @@ def describe_cavok(token: str) -> str:
 def describe_trend(token: str) -> str:
     if token == "NOSIG":
         return "No significant change is expected in the trend period."
+    if token == "TEMPO":
+        return "Temporary fluctuations are expected during the trend period."
+    if token == "BECMG":
+        return "Becoming: conditions are expected to change steadily during the trend period."
     return ""
 
 
@@ -463,6 +467,8 @@ def parse_simple_remark_token(token: str) -> str:
         return "Pressure is falling rapidly."
     if token == "FROPA":
         return "Frontal passage occurred."
+    if token == "$":
+        return "Maintenance indicator: the automated station may require maintenance."
     if token == "PNO":
         return "Tipping bucket rain gauge information not available."
     if token in MIDDLE_CLOUD_REMARK_MAP:
